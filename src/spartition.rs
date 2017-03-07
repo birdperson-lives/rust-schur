@@ -1,7 +1,10 @@
 use std::fmt::{Debug, Formatter, Result};
+use std::io::Write;
 use std::cmp::Ordering;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::collections::HashSet;
+use std::fs::File;
+use std::time::SystemTime;
 
 pub type Num = u16;
 
@@ -44,7 +47,7 @@ impl SPartition {
 		self
 	}
 
-	pub fn find_children(&self, best: Arc<RwLock<(Num,SPartition)>>) -> Vec<SPartition> {
+	pub fn find_children(&self, best: Arc<RwLock<(Num,SPartition)>>, log_file: Arc<Mutex<File>>) -> Vec<SPartition> {
 		let mut children: Vec<SPartition> = vec![];
 		for i in 0..self.partition.len() {
 			if i > 0 && self.partition.get(i-1).unwrap().is_empty() {
@@ -59,7 +62,7 @@ impl SPartition {
 						update = true;		
 					}
 					if let Some(val) = child.cap() {
-						if val > best_top {
+						if val > best_top+1 {
 							children.push(child.clone());
 						}
 					} else {
@@ -67,7 +70,8 @@ impl SPartition {
 					}
 				}
 				if update {
-					*best.write().unwrap() = (child.top(), child);
+					*best.write().unwrap() = (child.top(), child.clone());
+                    (*log_file.lock().unwrap()).write_fmt(format_args!("{:?} best is {} from {:?}\n", SystemTime::now(), child.top(), child));
 				}
 			}
 		}
